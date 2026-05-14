@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>URL Shortener — All in One</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0c0e14;
+  --panel: #13151e;
+  --panel2: #1a1d28;
+  --border: #242736;
+  --border2: #2e3245;
+  --text: #eef0f8;
+  --muted: #656a84;
+  --muted2: #3d4157;
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Outfit', sans-serif;
+  --success: #3dd68c;
+  --success-dim: rgba(61,214,140,0.1);
+  --error: #ff5f5f;
+  --error-dim: rgba(255,95,95,0.1);
+
+  /* Provider colors */
+  --rebrandly: #6c63ff;
+  --rebrandly-dim: rgba(108,99,255,0.12);
+  --tinyurl: #e8532a;
+  --tinyurl-dim: rgba(232,83,42,0.12);
+  --bitly: #ef5a19;
+  --bitly-dim: rgba(239,90,25,0.12);
+
+  --active-color: var(--rebrandly);
+  --active-dim: var(--rebrandly-dim);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 44px 16px 80px;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Ambient background */
+.ambient {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+  transition: background 0.6s ease;
+}
+.ambient-1 {
+  width: 500px; height: 500px;
+  top: -200px; left: -100px;
+  background: radial-gradient(circle, rgba(108,99,255,0.07) 0%, transparent 70%);
+  animation: float1 8s ease-in-out infinite;
+}
+.ambient-2 {
+  width: 400px; height: 400px;
+  bottom: -100px; right: -100px;
+  background: radial-gradient(circle, rgba(61,214,140,0.05) 0%, transparent 70%);
+  animation: float2 10s ease-in-out infinite;
+}
+
+@keyframes float1 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(30px)} }
+@keyframes float2 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-20px)} }
+
+.wrap {
+  width: 100%;
+  max-width: 600px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Header ── */
+header {
+  text-align: center;
+  margin-bottom: 36px;
+  animation: slideDown 0.5s ease both;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel2);
+  border: 1px solid var(--border2);
+  border-radius: 99px;
+  padding: 5px 14px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+
+.badge-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--active-color);
+  animation: blink 2s ease infinite;
+  transition: background 0.4s;
+}
+
+h1 {
+  font-size: clamp(28px, 7vw, 46px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.h1-sub {
+  color: var(--active-color);
+  transition: color 0.4s;
+}
+
+.tagline {
+  margin-top: 10px;
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+/* ── Provider Tabs ── */
+.provider-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+  animation: slideUp 0.5s 0.1s ease both;
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+
+.tab {
+  background: var(--panel);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.tab::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.3s;
+  border-radius: 12px;
+}
+
+.tab.rebrandly::before { background: var(--rebrandly-dim); }
+.tab.tinyurl::before   { background: var(--tinyurl-dim); }
+.tab.bitly::before     { background: var(--bitly-dim); }
+
+.tab:hover::before, .tab.active::before { opacity: 1; }
+
+.tab.active.rebrandly { border-color: var(--rebrandly); }
+.tab.active.tinyurl   { border-color: var(--tinyurl); }
+.tab.active.bitly     { border-color: var(--bitly); }
+
+.tab-icon {
+  font-size: 22px;
+  margin-bottom: 6px;
+  position: relative;
+  z-index: 1;
+}
+
+.tab-name {
+  font-size: 13px;
+  font-weight: 700;
+  position: relative;
+  z-index: 1;
+  transition: color 0.2s;
+}
+
+.tab.active.rebrandly .tab-name { color: var(--rebrandly); }
+.tab.active.tinyurl .tab-name   { color: var(--tinyurl); }
+.tab.active.bitly .tab-name     { color: var(--bitly); }
+
+.tab-desc {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 3px;
+  position: relative;
+  z-index: 1;
+  font-family: var(--mono);
+}
+
+/* ── Main Card ── */
+.card {
+  background: var(--panel);
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 14px;
+  transition: border-color 0.3s;
+}
+
+.card.provider-rebrandly { border-color: rgba(108,99,255,0.25); }
+.card.provider-tinyurl   { border-color: rgba(232,83,42,0.25); }
+.card.provider-bitly     { border-color: rgba(239,90,25,0.25); }
+
+.card-anim {
+  animation: slideUp 0.5s 0.2s ease both;
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+
+/* ── Section label ── */
+.slabel {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.slabel::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.slabel a {
+  font-size: 10px;
+  color: var(--active-color);
+  text-decoration: none;
+  transition: color 0.3s;
+}
+.slabel a:hover { text-decoration: underline; }
+
+/* ── Inputs ── */
+input[type="password"],
+input[type="text"],
+input[type="url"] {
+  width: 100%;
+  background: var(--panel2);
+  border: 1.5px solid var(--border2);
+  border-radius: 11px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 12px 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+input:focus {
+  border-color: var(--active-color);
+  box-shadow: 0 0 0 3px rgba(108,99,255,0.1);
+  background: var(--panel);
+}
+input::placeholder { color: var(--muted2); }
+
+.api-row { display: flex; gap: 8px; margin-bottom: 0; }
+.api-row input { flex: 1; }
+
+.field { margin-bottom: 12px; }
+.field:last-of-type { margin-bottom: 0; }
+
+.field-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 6px;
+  display: block;
+}
+
+.opt-tag {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--muted2);
+  font-family: var(--mono);
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.sep { height: 1px; background: var(--border); margin: 16px 0; }
+
+/* ── Buttons ── */
+button {
+  font-family: var(--sans);
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  border-radius: 11px;
+  transition: all 0.15s;
+}
+
+.btn-save {
+  background: var(--panel2);
+  border: 1.5px solid var(--border2);
+  color: var(--muted);
+  padding: 12px 16px;
+  font-size: 13px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.btn-save:hover {
+  border-color: var(--active-color);
+  color: var(--active-color);
+}
+.btn-save.ok {
+  background: var(--success-dim);
+  border-color: rgba(61,214,140,0.4);
+  color: var(--success);
+}
+
+.btn-go {
+  width: 100%;
+  padding: 15px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  border-radius: 13px;
+  letter-spacing: 0.01em;
+  position: relative;
+  overflow: hidden;
+  background: var(--active-color);
+  box-shadow: 0 4px 20px rgba(108,99,255,0.3);
+  transition: all 0.2s;
+}
+
+.btn-go::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.12), transparent);
+  pointer-events: none;
+}
+
+.btn-go:hover { transform: translateY(-1px); filter: brightness(1.1); }
+.btn-go:active { transform: translateY(0); }
+.btn-go:disabled { opacity: 0.45; cursor: not-allowed; transform: none; filter: none; }
+
+/* ── Result ── */
+.result {
+  border-radius: 13px;
+  padding: 16px;
+  margin-top: 14px;
+  display: none;
+  animation: popIn 0.25s ease both;
+}
+.result.show-ok {
+  display: block;
+  background: var(--success-dim);
+  border: 1.5px solid rgba(61,214,140,0.25);
+}
+.result.show-err {
+  display: block;
+  background: var(--error-dim);
+  border: 1.5px solid rgba(255,95,95,0.25);
+}
+
+.result-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.result-label.ok  { color: var(--success); }
+.result-label.err { color: var(--error); }
+
+.result-row { display: flex; align-items: center; gap: 10px; }
+
+.result-url {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--success);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.result-url:hover { text-decoration: underline; }
+
+.btn-copy {
+  background: rgba(61,214,140,0.12);
+  border: 1.5px solid rgba(61,214,140,0.3);
+  color: var(--success);
+  padding: 8px 14px;
+  font-size: 12px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  font-family: var(--mono);
+  transition: all 0.15s;
+}
+.btn-copy:hover { background: rgba(61,214,140,0.2); }
+.btn-copy.copied { background: rgba(61,214,140,0.25); }
+
+.err-msg {
+  color: var(--error);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Spinner */
+.spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.5s linear infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+  position: relative; top: -1px;
+}
+
+/* ── History ── */
+.hist-wrap {
+  animation: slideUp 0.5s 0.35s ease both;
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+
+.hist-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.hist-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.btn-clear {
+  font-family: var(--mono);
+  font-size: 10px;
+  background: none;
+  border: 1px solid transparent;
+  color: var(--muted);
+  padding: 4px 9px;
+  border-radius: 7px;
+  letter-spacing: 0.06em;
+}
+.btn-clear:hover {
+  color: var(--error);
+  border-color: rgba(255,95,95,0.3);
+  background: var(--error-dim);
+}
+
+.hist-list { display: flex; flex-direction: column; gap: 8px; }
+
+.hist-item {
+  background: var(--panel);
+  border: 1.5px solid var(--border);
+  border-radius: 13px;
+  padding: 13px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: border-color 0.15s;
+  animation: slideUp 0.25s ease both;
+}
+.hist-item:hover { border-color: var(--border2); }
+
+.hist-provider-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.hist-provider-dot.rebrandly { background: var(--rebrandly); }
+.hist-provider-dot.tinyurl   { background: var(--tinyurl); }
+.hist-provider-dot.bitly     { background: var(--bitly); }
+
+.hist-short {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--active-color);
+  text-decoration: none;
+  display: block;
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.3s;
+}
+.hist-short:hover { text-decoration: underline; }
+
+.hist-short.rebrandly { color: var(--rebrandly); }
+.hist-short.tinyurl   { color: var(--tinyurl); }
+.hist-short.bitly     { color: var(--bitly); }
+
+.hist-orig {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hist-actions { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
+
+.hist-badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 5px;
+}
+.hist-badge.rebrandly { background: var(--rebrandly-dim); color: var(--rebrandly); }
+.hist-badge.tinyurl   { background: var(--tinyurl-dim);   color: var(--tinyurl); }
+.hist-badge.bitly     { background: var(--bitly-dim);     color: var(--bitly); }
+
+.hist-copy-btn {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--panel2);
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  padding: 5px 10px;
+  border-radius: 7px;
+}
+.hist-copy-btn:hover { color: var(--text); border-color: var(--muted2); }
+
+.empty {
+  text-align: center;
+  padding: 24px;
+  border: 1.5px dashed var(--border2);
+  border-radius: 13px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+/* Provider-specific field visibility */
+.field-rebrandly, .field-tinyurl, .field-bitly { display: none; }
+
+/* Animations */
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes blink {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Pulse on tab switch */
+.card-pulse {
+  animation: cardPulse 0.3s ease;
+}
+@keyframes cardPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.995); }
+  100% { transform: scale(1); }
+}
+</style>
+</head>
+<body>
+
+<div class="ambient ambient-1"></div>
+<div class="ambient ambient-2"></div>
+
+<div class="wrap">
+
+  <!-- Header -->
+  <header>
+    <div class="badge">
+      <span class="badge-dot" id="badgeDot"></span>
+      All-in-One URL Shortener
+    </div>
+    <h1>Shorten with<br><span class="h1-sub" id="h1Sub">any service</span></h1>
+    <p class="tagline">Pick a provider and go.</p>
+  </header>
+
+  <!-- Provider Tabs -->
+  <div class="provider-tabs">
+    <div class="tab rebrandly active" onclick="switchProvider('rebrandly')">
+      <div class="tab-icon">🔗</div>
+      <div class="tab-name">Rebrandly</div>
+      <div class="tab-desc">branded links</div>
+    </div>
+    <div class="tab tinyurl" onclick="switchProvider('tinyurl')">
+      <div class="tab-icon">⚡</div>
+      <div class="tab-name">TinyURL</div>
+      <div class="tab-desc">tinyurl.com</div>
+    </div>
+    <div class="tab bitly" onclick="switchProvider('bitly')">
+      <div class="tab-icon">🌐</div>
+      <div class="tab-name">Bitly</div>
+      <div class="tab-desc">bit.ly links</div>
+    </div>
+  </div>
+
+  <!-- Main Card -->
+  <div class="card card-anim" id="mainCard">
+
+    <!-- URL input -->
+    <div class="field">
+      <label class="field-label">Long URL to shorten</label>
+      <input type="url" id="longUrl" placeholder="https://your-very-long-url.com/goes/here?param=value" />
+    </div>
+
+    <!-- Rebrandly: custom slug -->
+    <div class="field field-rebrandly" id="field-rebrandly-slug">
+      <label class="field-label">Custom slug <span class="opt-tag">(optional)</span></label>
+      <input type="text" id="slugInput" placeholder="my-custom-slug" />
+    </div>
+
+    <!-- TinyURL: alias -->
+    <div class="field field-tinyurl" id="field-tinyurl-alias">
+      <label class="field-label">Custom alias <span class="opt-tag">(optional · paid only · min 5 chars)</span></label>
+      <input type="text" id="tinyAlias" placeholder="my-alias" maxlength="60" />
+    </div>
+
+    <!-- Bitly: custom back-half -->
+    <div class="field field-bitly" id="field-bitly-back">
+      <label class="field-label">Custom back-half <span class="opt-tag">(optional)</span></label>
+      <input type="text" id="bitlyBack" placeholder="my-link" />
+    </div>
+
+    <!-- Bitly: group GUID -->
+    <div class="field field-bitly" id="field-bitly-group">
+      <label class="field-label">Group GUID <span class="opt-tag">(optional — from your Bitly settings)</span></label>
+      <input type="text" id="bitlyGroup" placeholder="Ba1bc23dE4F" />
+    </div>
+
+    <div class="sep"></div>
+
+    <button class="btn-go" id="shortenBtn" onclick="shortenUrl()">
+      ⚡ Shorten URL
+    </button>
+
+    <!-- Result -->
+    <div class="result" id="resultBox">
+      <div class="result-label ok">✓ Link ready</div>
+      <div class="result-row">
+        <a class="result-url" id="resultUrl" href="#" target="_blank"></a>
+        <button class="btn-copy" id="copyBtn" onclick="copyResult()">Copy</button>
+      </div>
+    </div>
+
+    <div class="result" id="errorBox">
+      <div class="result-label err">✗ Error</div>
+      <div class="err-msg" id="errMsg"></div>
+    </div>
+
+  </div>
+
+  <!-- History -->
+  <div class="hist-wrap">
+    <div class="hist-head">
+      <span class="hist-title">Recent links</span>
+      <button class="btn-clear" onclick="clearHistory()">Clear all</button>
+    </div>
+    <div class="hist-list" id="histList"></div>
+  </div>
+
+</div>
+
+<script>
+// ── Hardcoded API Keys ──────────────────────────────────────────────────────
+// PASTE YOUR API KEYS HERE:
+const API_KEYS = {
+  rebrandly: '5e186be4c4cb441aa9e0b8107a263a3b',
+  tinyurl: '4nSrTJTJrTswwrpN6DMvWKQcspKAUve91S71U8fWMeJmvRvTFJgcKaW7DUF6',
+  bitly: '8c8467cb15664963723e8ead5f17213b61d83bd7'
+};
+
+// ── State ──────────────────────────────────────────────────────────────────
+const HIST_KEY = 'aio_shortener_history';
+let provider = 'rebrandly';
+let currentUrl = '';
+
+const PROVIDERS = {
+  rebrandly: {
+    headingWord: 'Rebrandly',
+    color: '#6c63ff',
+    btnText: '⚡ Shorten with Rebrandly',
+  },
+  tinyurl: {
+    headingWord: 'TinyURL',
+    color: '#e8532a',
+    btnText: '⚡ Make it Tiny',
+  },
+  bitly: {
+    headingWord: 'Bitly',
+    color: '#ef5a19',
+    btnText: '⚡ Shorten with Bitly',
+  }
+};
+
+// ── Provider Switch ────────────────────────────────────────────────────────
+function switchProvider(p) {
+  provider = p;
+  const cfg = PROVIDERS[p];
+
+  // Tabs
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('.tab.' + p).classList.add('active');
+
+  // Header accent
+  document.getElementById('h1Sub').textContent = cfg.headingWord;
+  document.documentElement.style.setProperty('--active-color', cfg.color);
+
+  const dimMap = { rebrandly: 'rgba(108,99,255,0.12)', tinyurl: 'rgba(232,83,42,0.12)', bitly: 'rgba(239,90,25,0.12)' };
+  document.documentElement.style.setProperty('--active-dim', dimMap[p]);
+
+  // Card border
+  const card = document.getElementById('mainCard');
+  card.className = 'card card-anim provider-' + p;
+  card.classList.add('card-pulse');
+  setTimeout(() => card.classList.remove('card-pulse'), 300);
+
+  // Badge dot
+  document.querySelector('.badge-dot').style.background = cfg.color;
+
+  // Provider-specific fields
+  document.querySelectorAll('.field-rebrandly, .field-tinyurl, .field-bitly').forEach(f => f.style.display = 'none');
+  document.querySelectorAll('.field-' + p).forEach(f => f.style.display = 'block');
+
+  // Button text
+  document.getElementById('shortenBtn').innerHTML = cfg.btnText;
+
+  // Reset results
+  document.getElementById('resultBox').className = 'result';
+  document.getElementById('errorBox').className = 'result';
+}
+
+// ── Shorten ─────────────────────────────────────────────────────────────────
+async function shortenUrl() {
+  const key = API_KEYS[provider];
+  const url = document.getElementById('longUrl').value.trim();
+
+  // Reset results
+  document.getElementById('resultBox').className = 'result';
+  document.getElementById('errorBox').className = 'result';
+
+  if (!key || key.startsWith('YOUR_')) { 
+    showErr(`Please hardcode your ${provider} API key in the <script> section.`); 
+    return; 
+  }
+  if (!url) { showErr('Please paste a long URL.'); return; }
+
+  const btn = document.getElementById('shortenBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Shortening…';
+
+  try {
+    if (provider === 'rebrandly') await shortenRebrandly(key, url);
+    else if (provider === 'tinyurl') await shortenTinyurl(key, url);
+    else if (provider === 'bitly') await shortenBitly(key, url);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = PROVIDERS[provider].btnText;
+  }
+}
+
+async function shortenRebrandly(key, url) {
+  const slug = document.getElementById('slugInput').value.trim();
+  const body = { destination: url };
+  if (slug) body.slashtag = slug;
+
+  const res = await fetch('https://api.rebrandly.com/v1/links', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': key },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    showErr(data?.errors?.[0]?.message || data?.message || `Error ${res.status}`);
+  } else {
+    done('https://' + data.shortUrl, url);
+    document.getElementById('slugInput').value = '';
+  }
+}
+
+async function shortenTinyurl(key, url) {
+  const alias = document.getElementById('tinyAlias').value.trim();
+  if (alias && alias.length < 5) { showErr('Alias must be at least 5 characters.'); return; }
+  const body = { url, domain: 'tinyurl.com' };
+  if (alias) body.alias = alias;
+
+  const res = await fetch('https://api.tinyurl.com/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (!res.ok || data.code !== 0) {
+    showErr(data?.errors?.[0] || data?.message || `Error ${res.status}`);
+  } else {
+    done(data.data.tiny_url, url);
+    document.getElementById('tinyAlias').value = '';
+  }
+}
+
+async function shortenBitly(key, url) {
+  const back = document.getElementById('bitlyBack').value.trim();
+  const group = document.getElementById('bitlyGroup').value.trim();
+  const body = { long_url: url };
+  if (back)  body.custom_bitlinks = [back];
+  if (group) body.group_guid = group;
+
+  const res = await fetch('https://api-ssl.bitly.com/v4/shorten', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    showErr(data?.description || data?.message || `Error ${res.status}`);
+  } else {
+    done(data.link, url);
+    document.getElementById('bitlyBack').value = '';
+  }
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+function done(short, original) {
+  currentUrl = short;
+  const box = document.getElementById('resultBox');
+  const link = document.getElementById('resultUrl');
+  link.href = short;
+  link.textContent = short;
+  box.className = 'result show-ok';
+  document.getElementById('longUrl').value = '';
+  addHistory(short, original, provider);
+}
+
+function showErr(msg) {
+  document.getElementById('errMsg').textContent = msg;
+  document.getElementById('errorBox').className = 'result show-err';
+}
+
+function copyResult() {
+  navigator.clipboard.writeText(currentUrl).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ Copied';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// ── History ──────────────────────────────────────────────────────────────────
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem(HIST_KEY)) || []; } catch { return []; }
+}
+
+function addHistory(short, original, prov) {
+  const h = getHistory();
+  h.unshift({ short, original, provider: prov });
+  localStorage.setItem(HIST_KEY, JSON.stringify(h.slice(0, 30)));
+  renderHistory();
+}
+
+function clearHistory() {
+  localStorage.removeItem(HIST_KEY);
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('histList');
+  const h = getHistory();
+  if (!h.length) {
+    list.innerHTML = '<div class="empty">No links yet — shorten something above ↑</div>';
+    return;
+  }
+  list.innerHTML = h.map(item => `
+    <div class="hist-item">
+      <span class="hist-provider-dot ${item.provider}"></span>
+      <div class="hist-info">
+        <a class="hist-short ${item.provider}" href="${item.short}" target="_blank">${item.short}</a>
+        <span class="hist-orig">${item.original}</span>
+      </div>
+      <div class="hist-actions">
+        <span class="hist-badge ${item.provider}">${item.provider}</span>
+        <button class="hist-copy-btn" onclick="navigator.clipboard.writeText('${item.short}')">Copy</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  switchProvider('rebrandly');
+  renderHistory();
+  document.getElementById('longUrl').addEventListener('keydown', e => {
+    if (e.key === 'Enter') shortenUrl();
+  });
+});
+</script>
+</body>
+</html>
